@@ -10,7 +10,7 @@ Parameter Setting
 "ファイル周りの設定"
 
 
-step1 = "WA" #unnoised,PW, WA,WADP
+step1 = "PW" #unnoised,PW, WA,WADP
 #生データ
 startfile = r"/home/t-takahashi/LDP/wdbc.csv"
 #正規化したデータ
@@ -58,30 +58,27 @@ def main(attribution = 5, epsilon_all = 50, classification=5, sampling_num = 10,
         wa = r"/home/t-takahashi/LDP/data" + ConnectParams0(attribution, classification) +"/e=" + str(epsilon_all) + "/step1=" + step1 + "/" + str(num) + "/WA/wdbc_label.csv"
         #Step1**********************
         #ノイズなし属性削除(Step1=unnoised) + 属性を決定　+　ラベリング
-        if step1 == "unnoised":
+        if step1 == "random":
             epsilon_att = epsilon_all/((attribution+1))
             WA_tool.random_att_del(regfile, sampledfile, att_exp, attribution)
-            #WA_tool.att_decide(sampledfile, attfile, attribution)
             WA_tool.random_att_decide(sampledfile,attfile, attribution)
-            WA_tool.labeling(regfile, sampledfile, wa, midfile, classification)
+            WA_tool.simplabel_all(regfile, wa, midfile, att_exp, classification)
+
         
         elif step1 == "PW":
             #ノイズ付き属性削減(Step1=PW)　+ 属性を決定　+　ラベリング
             epsilon_att = epsilon_all/((attribution+1)*2)
             PW_tool.random_att_del(regfile, sampledfile, att_exp, attribution, epsilon_att)
             WA_tool.att_decide(sampledfile, attfile, attribution)
-            WA_tool.labeling(regfile, sampledfile, wa, midfile, classification)
+            WA_tool.simplabel_all(regfile, wa, midfile, att_exp, classification)
         
         elif step1 =="WA":
             #シンプルラベリング属性削減(Step1 = WA)　+ 属性を決定　+　ラベリング
             epsilon_att = epsilon_all/((attribution+1))
             WA_tool.simplabel_del(regfile, sampledfile, midfile, att_exp, attribution, classification)
-            #属性を決定
             WA_tool.att_decide(sampledfile, attfile, attribution)
             WA_tool.simplabel_all(regfile, wa, midfile, att_exp, classification)
-            
-            #WA_tool.simplabel_del(regfile, simp_label, att_exp, attribution)
-            #WA_tool.att_decide(sampledfile, attfile, attribution)
+           
         
         elif step1 =="WADP":
         #シンプルラベリング属性削減 + WADP(Step1 = WADP)　+ 属性を決定
@@ -113,7 +110,7 @@ def main(attribution = 5, epsilon_all = 50, classification=5, sampling_num = 10,
         WADP =glob.glob(r"/home/t-takahashi/LDP/data" + ConnectParams0(attribution, classification) +"/e=" + str(epsilon_all) + "/step1=" + step1 + "/" + str(num) + "/WADP/*" ) 
         PW =glob.glob(r"/home/t-takahashi/LDP/data" + ConnectParams0(attribution, classification) +"/e=" + str(epsilon_all) + "/step1=" + step1 + "/" + str(num) + "/PW/*")             
         
-        reshape.reshape2(startfile,wdbc, attfile)
+        reshape.reshape2(regfile,wdbc, attfile)
         reshape.reshape(wa, attfile)
         reshape.reshape_datasets(PW, attfile)
         reshape.reshape_datasets(WADP, attfile)
