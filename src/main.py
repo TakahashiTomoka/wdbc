@@ -10,7 +10,7 @@ Parameter Setting
 "ファイル周りの設定"
 
 
-step1 = "PW" #unnoised,PW, WA,WADP
+step1 = "random" #unnoised,PW, WA,WADP
 #生データ
 startfile = r"/home/t-takahashi/LDP/wdbc.csv"
 #正規化したデータ
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     sampling_num = 10
     loop_num = 100
     
-    for attribution in [3,4,5]:
-        for classification in [3,5]:
-            for epsilon_all in [10,15,20,25,30,35,40,45,50]:
+    for attribution in [5]:
+        for classification in [5]:
+            for epsilon_all in [25,30,35,40,45,50]:
                 main(attribution ,epsilon_all, classification,sampling_num,loop_num)

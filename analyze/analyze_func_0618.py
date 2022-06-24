@@ -176,6 +176,82 @@ def SVM(original_data, groups,attribution):
 #-----------------
 #WA
 #-------------
+
+def WA_wdbc_SVM(WA, wdbc,to_num, groups,attribution):
+    label = [i for i in range(attribution + 3)]
+    with open(groups)as f:
+        reader = csv.reader(f)
+        crossed_ID = [[int(v) for v in row] for row in reader]
+    
+    train_df = pd.read_csv(WA,header=None,names=label)
+    test_df = pd.read_csv(wdbc,header = None, names = label)
+    #Representative 
+    with open(to_num)as f:
+        reader = csv.reader(f)
+        To_num = [[float(v) for v in row] for row in reader]
+    #生データ空間へ
+    for i in range(sample_num):
+        train_df.iloc[i,3:] = get_label_to_num(train_df.iloc[i,3:],To_num,attribution)
+
+
+    scores = [] # accuracy, recall,precision
+    times = []
+    model = SVC(kernel='rbf', random_state=None)# 線形SVMのインスタンスを生成
+    #model = SVC(kernel='linear', random_state=None)# 線形SVMのインスタンスを生成
+    for IDs in crossed_ID:
+        # データの分割  
+        X_train = []#data
+        y_train = []#target
+        X_test = []#data
+        y_test = []#target
+        for i in range(sample_num):
+            if train_df.iat[i,0] in IDs:
+                X_test.append(test_df.iloc[i,3:])
+                y_test.append(test_df.iloc[i,1])#ノイズなし目的変数
+            else:
+                X_train.append(train_df.iloc[i,3:])
+                y_train.append(train_df.iloc[i,2])#ノイズ付き目的変数
+        AVE = []
+        STD = []
+        Ar_X_train = np.array(X_train)
+        for i in range(attribution):#5
+            feat = Ar_X_train[:,i].tolist()
+            ave, std = mean_std(feat)
+            AVE.append(ave)
+            STD.append(std)
+        #標準化
+        ST_X_test, ST_X_train = [],[]
+        #学習データの標準化
+        for data in X_train:
+            std = []
+            for d,a,s in zip(data, AVE,STD):
+                if s==0:
+                    std.append(d)
+                else:
+                    std.append((d-a)/s)
+            ST_X_train.append(std)
+        #評価データの標準化
+        for data in X_test:
+            std = []
+            for d,a,s in zip(data, AVE,STD):
+                if s==0:
+                    std.append(d)
+                else:
+                    std.append((d-a)/s)
+            ST_X_test.append(std)
+        #モデルの学習
+        start = time.perf_counter()
+        model.fit(ST_X_train,y_train)
+        times.append(time.perf_counter() - start)                                                  
+        # テストデータに対する精度
+        pred_test = model.predict(ST_X_test)
+        score =[accuracy_score(y_test, pred_test),recall_score(y_test, pred_test),precision_score(y_test, pred_test)]
+        scores.append(score)    
+    return(np.mean(scores,axis=0),np.mean(times)) # accuracy,recall,precisionの平均
+
+
+
+
 #学習データ・評価データ：WA or WADP (WA or WADPファイル、中央値データ、交差検定用データ)
 def WA_SVM(WA, to_num, groups,attribution):
     label = [i for i in range(attribution + 3)]
@@ -494,7 +570,77 @@ def PW_SVM(PWdatas,groups,attribution):
     min_index = np.argmin(Scores,axis=0)
     return([np.mean(Scores,axis=0).tolist(), [Scores[i] for i in Max_index],[Scores[i] for i in min_index]], np.mean(Times)) 
     #return Scores, time
-    
+
+def PW_wdbc_SVM(PW,wdbc, groups,attribution):
+    label = [i for i in range(attribution + 3)]
+    with open(groups)as f:
+        reader = csv.reader(f)
+        crossed_ID = [[int(v) for v in row] for row in reader]
+    test_df = pd.read_csv(wdbc,header=None,names=label) 
+        
+    Scores = [] # accuracy, recall,precision
+    Times = []
+    for pw in PW:
+        train_df = pd.read_csv(pw,header=None,names=label)
+        
+        scores = [] # accuracy, recall,precision
+        times = []
+        #model = SVC(kernel='linear', random_state=None)# 線形SVMのインスタンスを生成
+        model = SVC(kernel='rbf', random_state=None)# 線形SVMのインスタンスを生成
+        for IDs in crossed_ID:
+            # データの分割  
+            X_train = []#data
+            y_train = []#target
+            X_test = []#data
+            y_test = []#target
+            for i in range(sample_num):
+                if train_df.iat[i,0] in IDs:
+                    X_test.append(test_df.iloc[i,3:])
+                    y_test.append(test_df.iloc[i,1])#ノイズなし目的変数
+                else:
+                    X_train.append(train_df.iloc[i,3:])
+                    y_train.append(train_df.iloc[i,2])#ノイズあり目的変数
+            AVE = []
+            STD = []
+            Ar_X_train = np.array(X_train)
+            for i in range(attribution):#5
+                feat = Ar_X_train[:,i].tolist()
+                ave, std = mean_std(feat)
+                AVE.append(ave)
+                STD.append(std)
+            #標準化
+            ST_X_test, ST_X_train = [],[]
+            #学習データの標準化
+            for data in X_train:
+                std = []
+                for d,a,s in zip(data, AVE,STD):
+                    if s==0:
+                        std.append(d)
+                    else:
+                        std.append((d-a)/s)
+                ST_X_train.append(std)
+            #評価データの標準化
+            for data in X_test:
+                std = []
+                for d,a,s in zip(data, AVE,STD):
+                    if s==0:
+                        std.append(d)
+                    else:
+                        std.append((d-a)/s)
+                ST_X_test.append(std)
+            #モデルの学習
+            start = time.perf_counter()
+            model.fit(ST_X_train,y_train)
+            times.append(time.perf_counter()-start)                                                  
+            # テストデータに対する精度
+            pred_test = model.predict(ST_X_test)
+            score =[accuracy_score(y_test, pred_test),recall_score(y_test, pred_test),precision_score(y_test, pred_test)]
+            scores.append(score)
+        Scores.append(np.mean(scores,axis=0)) # accuracy,recall,precisionの平均
+        Times.append(np.mean(times))
+    Max_index = np.argmax(Scores,axis=0)
+    min_index = np.argmin(Scores,axis=0)
+    return([np.mean(Scores,axis=0).tolist(), [Scores[i] for i in Max_index],[Scores[i] for i in min_index]], np.mean(Times))     
 
 def PW_WA_SVM(PW,WA, to_num, groups,attribution):
     label = [i for i in range(attribution + 3)]
@@ -662,6 +808,82 @@ def pw_wadp_SVM(pw,wadp, To_num, crossed_ID,attribution):
 #---------------
 #WADP
 #--------------  
+def WADP_wdbc_SVM(WADP,wdbc,to_num,groups,attribution):
+    label = [i for i in range(attribution + 3)]
+    with open(groups)as f:
+        reader = csv.reader(f)
+        crossed_ID = [[int(v) for v in row] for row in reader]
+    #Representative 
+    with open(to_num)as f:
+         reader = csv.reader(f)
+         To_num = [[float(v) for v in row] for row in reader]   
+    test_df = pd.read_csv(wdbc,header=None,names=label)
+    Scores = [] # accuracy, recall,precision
+    Times = []
+    for wadp in WADP:
+        train_df = pd.read_csv(wadp,header=None,names=label)
+        for i in range(sample_num):
+            train_df.iloc[i,3:] = get_label_to_num(train_df.iloc[i,3:], To_num, attribution)
+        scores = [] # accuracy, recall,precision
+        times = []
+        model = SVC(kernel='rbf', random_state=None)# 線形SVMのインスタンスを生成
+        for IDs in crossed_ID:
+            # データの分割  
+            X_train = []#data
+            y_train = []#target
+            X_test = []#data
+            y_test = []#target
+            for i in range(sample_num):
+                if train_df.iat[i,0] in IDs:
+                    X_test.append(test_df.iloc[i,3:])
+                    y_test.append(test_df.iloc[i,1])#ノイズなし目的変数
+                else:
+                    X_train.append(train_df.iloc[i,3:])
+                    y_train.append(train_df.iloc[i,2])#ノイズあり目的変数
+            AVE = []
+            STD = []
+            Ar_X_train = np.array(X_train)
+            for i in range(attribution):#5
+                feat = Ar_X_train[:,i].tolist()
+                ave, std = mean_std(feat)
+                AVE.append(ave)
+                STD.append(std)
+            #標準化
+            ST_X_test, ST_X_train = [],[]
+            #学習データの標準化
+            for data in X_train:
+                std = []
+                for d,a,s in zip(data, AVE,STD):
+                    if s==0:
+                        std.append(d)
+                    else:
+                        std.append((d-a)/s)
+                ST_X_train.append(std)
+            #評価データの標準化
+            for data in X_test:
+                std = []
+                for d,a,s in zip(data, AVE,STD):
+                    if s==0:
+                        std.append(d)
+                    else:
+                        std.append((d-a)/s)
+                ST_X_test.append(std)
+            #モデルの学習
+            start = time.perf_counter()
+            model.fit(ST_X_train,y_train)
+            times.append(time.perf_counter()-start)
+                                                  
+            # テストデータに対する精度
+            pred_test = model.predict(ST_X_test)
+            score =[accuracy_score(y_test, pred_test),recall_score(y_test, pred_test),precision_score(y_test, pred_test)]
+            scores.append(score)
+        Scores.append(np.mean(scores,axis=0)) # accuracy,recall,precisionの平均
+        Times.append(np.mean(times))
+    
+    Max_index = np.argmax(Scores,axis=0)
+    min_index = np.argmin(Scores,axis=0)
+    return([np.mean(Scores,axis=0).tolist(), [Scores[i] for i in Max_index],[Scores[i] for i in min_index]], np.mean(Times)) 
+    #return(np.mean(Scores,axis=0))
 
 def WADP_WA_SVM(WADP,WA,to_num,groups,attribution):
     label = [i for i in range(attribution + 3)]
