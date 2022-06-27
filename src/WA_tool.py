@@ -96,7 +96,13 @@ def simplabel(num, label_count):
         if num <= (2/label_count)*(i+1) -1:
             return i
 
-    return label_count-1    
+    return label_count-1   
+
+def random_att_decide(sampledfile,attfile, sample_count):
+    att = [0,1,2] + sorted(random.sample(att_exp, k=sample_count))
+    with open(attfile, 'w',newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(att) 
 
 
 def simplabel_del(openfile, sampledfile, midfile, att_exp, sample_count, label_count):
